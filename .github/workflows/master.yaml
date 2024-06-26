@@ -7,7 +7,8 @@ on:
       - 'main'
 
 jobs:
-  update-security-group:
+  
+  allow-ssh:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -17,33 +18,23 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.ACTIONS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.ACTIONS_SECRET_ACCESS_KEY}}
+          aws-secret-access-key: ${{ secrets.ACTIONS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2 
 
-      - name: Fetch GitHub Actions IP ranges
-        id: fetch_ip_ranges
-        run: |
-          curl -s https://api.github.com/meta | jq -r '.actions[]' > actions_ip_ranges.txt
-
-      - name: Update security group
+      - name: Allow SSH from any IP
         run: |
 
-          SECURITY_GROUP_ID="sg-0f966a7c7341b7cfc" 
-
-          old_ips=$(aws ec2 describe-security-groups --group-ids $SECURITY_GROUP_ID --query 'SecurityGroups[0].IpPermissions[?FromPort==`22`].IpRanges[].CidrIp' --output text)
-          for ip in $old_ips; do
-            aws ec2 revoke-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol tcp --port 22 --cidr $ip || true
-          done
-
-          while IFS= read -r ip; do
-            aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol tcp --port 22 --cidr $ip || true
-          done < actions_ip_ranges.txt
-
-
+          SECURITY_GROUP_ID="sg-0f966a7c7341b7cfc"
+          
+          aws ec2 authorize-security-group-ingress \
+            --group-id $SECURITY_GROUP_ID \
+            --protocol tcp \
+            --port 22 \
+            --cidr 0.0.0.0/0
 
   build:
     runs-on: ubuntu-latest
-    needs: [update-security-group]
+    needs: [allow-ssh]
     steps:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -74,7 +65,6 @@ jobs:
           username: ${{ secrets.PRODUCTION_AWS_SSH_USERNAME }}
           key: ${{ secrets.PRODUCTION_AWS_SSH_SECRET}}
           script: |
-
             echo "Login to Docker Hub"
             sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
 
@@ -86,3 +76,28 @@ jobs:
 
             echo "Delete old image"
             sudo docker image prune -f
+
+  revoke-ssh:
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.ACTIONS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ACTIONS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2 
+
+      - name: Revoke SSH from any IP
+        run: |
+
+          SECURITY_GROUP_ID="sg-0f966a7c7341b7cfc"
+          
+          aws ec2 revoke-security-group-ingress \
+            --group-id $SECURITY_GROUP_ID \
+            --protocol tcp \
+            --port 22 \
+            --cidr 0.0.0.0/0
