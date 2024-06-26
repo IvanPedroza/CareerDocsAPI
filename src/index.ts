@@ -1,15 +1,10 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import { appRouter } from "./endpoints";
-import express from "express";
-import { Documentation, attachRouting, AppConfig } from "express-zod-api";
-import * as fs from 'fs';
+import express, { Request, Response, NextFunction } from "express";
+import { attachRouting, AppConfig } from "express-zod-api";
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
-import { oauth2Client, authorizeUrl, generateJWT } from "./googleAuth";
-import { google } from 'googleapis';
-import url from 'url';
-import { Client } from 'pg';
 
 
 const app = express();
@@ -21,15 +16,6 @@ const config: AppConfig<string> = {
     logger: {level: 'debug', color: true},
 };
 
-// PostgreSQL Client Setup
-// const client = new Client({
-//     user: 'yourusername',
-//     host: 'localhost',
-//     database: 'jobtracker',
-//     password: 'yourpassword',
-//     port: 5432,
-//   });
-//   client.connect();
 
 const options = {
     definition: {
@@ -40,7 +26,7 @@ const options = {
             description: "A simple Express Library API to serve resume and cover letter files.",
         },
         servers: [{
-            url: `http://ec2-54-245-170-196.us-west-2.compute.amazonaws.com:${PORT}`
+            url: `http://35.93.146.27:${PORT}`
         }],
     },
     apis: ["./API_Documentation.yaml"],
@@ -53,12 +39,18 @@ app.use(express.json());
 
 attachRouting(config, appRouter);
 
+// Error handling middleware
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+    console.error(err.stack);
+    res.status(500).json({ message: 'An unexpected error occurred! Here are the logs: ', error: err.message });
+});
+
 
 const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
-const Shutdown = () => {
+const shutdown = () => {
     console.log('Received shutdown signal, shutting down gracefully...');
     server.close(() => {
         console.log('Closed out remaining connections.');
@@ -71,5 +63,17 @@ const Shutdown = () => {
     }, 10000);
 };
 
-process.on('SIGINT', Shutdown);
-process.on('SIGTERM', Shutdown);
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    shutdown();
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+    shutdown();
+});

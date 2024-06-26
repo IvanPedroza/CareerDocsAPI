@@ -1,9 +1,8 @@
 import { z } from 'zod';
 import { Routing, defaultEndpointsFactory, createResultHandler, ez, EndpointsFactory } from 'express-zod-api';
-import { oauth2Client, authorizeUrl, verifyJWT, generateJWT } from './googleAuth';
 import {GPT} from './models/OpenAIClient';
-import {StringifyTxt, StringifyPdf} from './utils/DocumentLoader';
-import { generatePDFDocument, writeCoverLetterPDF, splitResumeSummary, extractContactInfo, ExtractedContactInfo} from './utils/writePDF';
+import { StringifyPdf} from './utils/DocumentLoader';
+import {  writeCoverLetterPDF, splitResumeSummary, extractContactInfo, ExtractedContactInfo} from './utils/writePDF';
 import { generateJobListingPrompt } from './prompts/jobListingPrompt';
 import { generateResumePrompt } from './prompts/resumePrompt';
 import { generateHookPrompt } from './prompts/hookPrompt';
@@ -30,6 +29,12 @@ comprehensive understanding of Applicant Tracking Systems (ATS) and keyword opti
 
 const resume : string = StringifyPdf("src/public/Ivan Pedroza Resume.pdf");
 
+// Error handling middleware for async functions
+const asyncHandler = (fn: any) => (req: any, res: any, next: any) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+
 const generateLetter = async ({url}: {url: string}) => {
 
   const jobListing = await fetchListing(url);
@@ -47,8 +52,6 @@ const generateLetter = async ({url}: {url: string}) => {
       ])
   ]);
 
-  // logger\.info("Original Resume Summary", { resumeSummary });
-
   const resumeSplit = splitResumeSummary(resumeSummary);
 
   let contactInfo: string = '';
@@ -56,10 +59,7 @@ const generateLetter = async ({url}: {url: string}) => {
 
   if (resumeSplit) {
       [contactInfo, workExperience] = resumeSplit;
-      // logger\.info("Contact Information", { contactInfo });
-      // logger\.info("Work Experience", { workExperience });
   } else {
-      // logger\.info("Keyword phrase not found in resume summary", { resumeSummary });
   }
 
   const hook = await GPT([
@@ -87,11 +87,7 @@ const generateLetter = async ({url}: {url: string}) => {
       { role: "user", content: generateFinalPrompt(workExperience, hook, revised_body, conclusion) }
   ]);
 
-  // logger\.info('Model', { model: process.env.OPENAI_MODEL });
-  // logger\.info('Final', { final });
-
   const extractedContactInfoValues = extractContactInfo(contactInfo);
-  // logger\.info("Extracted Contact Information", { extractedContactInfoValues });
 
   return writeCoverLetterPDF({final: final, contactInfo: extractedContactInfoValues});
 };
@@ -188,17 +184,17 @@ const pdfEndpoint = new EndpointsFactory(
   })
 );
 
-const job = defaultEndpointsFactory.build({
-  shortDescription: "fetches job listing",
-  description: 'retrieves text from job listing',
-  method: 'post',
-  input: z.object({ url: z.string() }),
-  output: z.object({ text: z.string() }),
-  handler: async ({ input: { url } }) => {
-    const jobListing = await fetchListing(url);
-    return { text: (jobListing) };
-  },
-});
+// const job = defaultEndpointsFactory.build({
+//   shortDescription: "fetches job listing",
+//   description: 'retrieves text from job listing',
+//   method: 'post',
+//   input: z.object({ url: z.string() }),
+//   output: z.object({ text: z.string() }),
+//   handler: async ({ input: { url } }) => {
+//     const jobListing = await fetchListing(url);
+//     return { text: (jobListing) };
+//   },
+// });
 
 // Endpoint to fetch job listing
 const test = defaultEndpointsFactory.build({
@@ -212,20 +208,6 @@ const test = defaultEndpointsFactory.build({
   },
 });
 
-
-
-// Endpoint to fetch resume
-const resumeEndpoint = pdfEndpoint.build({
-  shortDescription: "Fetches resume files",
-  description: 'Retrieves most up-to-date resume',
-  method: 'post',
-  input: z.object({ name: z.string().optional() }),
-  output: z.object({ filename: z.string() }),
-  handler: async ({ input: { name }, logger }) => {
-    const filePath = `public/secure/Ivan Pedroza Resume.pdf`;
-    return { filename: filePath };
-  },
-});
 
 const coverLetterEndpoint = pdfEndpoint.build({
   shortDescription: "Fetches cover letter files",
@@ -260,8 +242,8 @@ const coverLetterEndpoint = pdfEndpoint.build({
 
 
 export const appRouter: Routing = {
-  job: job,
+  // job: job,
   test: test,
-  resume: resumeEndpoint,
+  // resume: resumeEndpoint,
   cover: coverLetterEndpoint,
 };

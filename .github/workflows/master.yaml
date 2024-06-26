@@ -24,11 +24,11 @@ jobs:
         with:
           file: ./docker/app.dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/career-docs-api:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/career-docs-api:2.0.1
 
   deploy:
     name: Deploy to Server (AWS EC2)
-    runs-on: ubuntu-latest   
+    runs-on: ubuntu-latest  
     needs: [build]
 
     steps:
@@ -44,10 +44,10 @@ jobs:
             sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
 
             echo "Pull new image"
-            sudo docker-compose -f /home/${{ secrets.PRODUCTION_AWS_SSH_USERNAME }}/docker-compose.deploy.yml pull
+            sudo docker-compose -f /home/${{ secrets.PRODUCTION_AWS_SSH_USERNAME }}/docker-compose.yaml pull
 
             echo "Restart the container"
-            sudo docker-compose -f /home/${{ secrets.PRODUCTION_AWS_SSH_USERNAME }}/docker-compose.deploy.yml --env-file /home/${{ secrets.PRODUCTION_AWS_SSH_USERNAME }}/.env up --force-recreate --build --no-deps -d
+            sudo docker-compose -f /home/${{ secrets.PRODUCTION_AWS_SSH_USERNAME }}/docker-compose.yaml --env-file /home/${{ secrets.PRODUCTION_AWS_SSH_USERNAME }}/.env up --force-recreate --build --no-deps -d
 
             echo "Delete old image"
             sudo docker image prune -f

@@ -16,7 +16,6 @@ Font.register({
 const pageMargin = 35;
 const footerHeight = 50;
 const fontColorPrimary = '#000';
-const fontColorSecondary = '#666';
 
 // Create styles
 const styles = StyleSheet.create({

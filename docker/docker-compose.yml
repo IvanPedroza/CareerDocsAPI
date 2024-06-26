@@ -1,0 +1,39 @@
+name: career-docs-api
+services:
+  app:
+    image: ivanpedroza/career-docs-api:2.0.0
+    container_name: CareerDocumentsAPI
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV
+      - OPENAI_MODEL
+      - OPENAI_API_KEY
+      - GEMINI_API_KEY
+      - GEMINI_MODEL
+      - SEQ_API_KEY
+      - SEQ_SERVER
+    depends_on:
+      - seq
+    networks:
+      - web
+
+  seq:
+    image: datalust/seq:latest
+    container_name: seqhc
+    restart: unless-stopped
+    ports:
+      - "5341:80"
+    environment:
+      - ACCEPT_EULA=Y
+    volumes:
+      - seqhc_data:/data
+    networks:
+      - web
+
+networks:
+  web:
+
+volumes:
+  seqhc_data:
