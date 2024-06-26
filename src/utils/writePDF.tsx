@@ -119,7 +119,7 @@ function getCurrentFormattedDate(): string {
   return `${day} ${month} ${year}`;
 }
 
-export function splitResumeSummary(resumeSummary: string): [string, string] | null {
+export const splitResumeSummary = (resumeSummary: string): [string, string] => {
   // Define a regular expression to match "Previous work experience" with some tolerance
   const regex = /previous.*work.*experience/i;
 
@@ -127,18 +127,18 @@ export function splitResumeSummary(resumeSummary: string): [string, string] | nu
   const match = resumeSummary.match(regex);
   if (!match) {
       // If no match is found, return null
-      return null;
+      return ["", ""];
   }
 
   // Split the resume summary at the match index
-  const splitIndex = match.index!;
-  const contactInfo = resumeSummary.substring(0, splitIndex).trim();
-  const workExperience = resumeSummary.substring(splitIndex).trim();
+  const splitIndex: number = match.index!;
+  const contactInfo: string = resumeSummary.substring(0, splitIndex).trim();
+  const workExperience: string = resumeSummary.substring(splitIndex).trim();
 
   return [contactInfo, workExperience];
 }
 
-export interface ExtractedContactInfo {
+export type ContactInfo = {
   applicantName: string;
   applicantTitle: string;
   applicantEmail: string;
@@ -148,16 +148,18 @@ export interface ExtractedContactInfo {
   applicantPhone: string;
 }
 
-export function extractContactInfo(contactInfo: string): ExtractedContactInfo {
-  const fields = {
-    applicantName: /"Applicant name":\s*"([^"]*)"/i,
-    applicantTitle: /"Applicant title":\s*"([^"]*)"/i,
-    applicantEmail: /"Applicant email":\s*"([^"]*)"/i,
-    applicantResidence: /"Applicant residence":\s*"([^"]*)"/i,
-    applicantPortfolioWebsite: /"Applicant portfolio website":\s*"([^"]*)"/i,
-    applicantGithub: /"Applicant github":\s*"([^"]*)"/i,
-    applicantPhone: /"Applicant phone":\s*"([^"]*)"/i,
-  };
+const contactFields = {
+  name: /"Applicant name":\s*"([^"]*)"/i,
+  title: /"Applicant title":\s*"([^"]*)"/i,
+  email: /"Applicant email":\s*"([^"]*)"/i,
+  residence: /"Applicant residence":\s*"([^"]*)"/i,
+  portfolio: /"Applicant portfolio website":\s*"([^"]*)"/i,
+  github: /"Applicant github":\s*"([^"]*)"/i,
+  phone: /"Applicant phone":\s*"([^"]*)"/i,
+};
+
+export function extractContactInfo(contactInfo: string): ContactInfo {
+
 
   const extractField = (pattern: RegExp): string => {
     const match = contactInfo.match(pattern);
@@ -165,18 +167,18 @@ export function extractContactInfo(contactInfo: string): ExtractedContactInfo {
   };
 
   return {
-    applicantName: extractField(fields.applicantName),
-    applicantTitle: extractField(fields.applicantTitle),
-    applicantEmail: extractField(fields.applicantEmail),
-    applicantResidence: extractField(fields.applicantResidence),
-    applicantPortfolioWebsite: extractField(fields.applicantPortfolioWebsite),
-    applicantGithub: extractField(fields.applicantGithub),
-    applicantPhone: extractField(fields.applicantPhone),
+    applicantName: extractField(contactFields.name),
+    applicantTitle: extractField(contactFields.title),
+    applicantEmail: extractField(contactFields.email),
+    applicantResidence: extractField(contactFields.residence),
+    applicantPortfolioWebsite: extractField(contactFields.portfolio),
+    applicantGithub: extractField(contactFields.github),
+    applicantPhone: extractField(contactFields.phone),
   };
 }
 
 
-export const generatePDFDocument = ({hook, body, closing}: {hook: string, body: string, closing: string}) => (
+export const generatePDFDocument = (hook: string, body:string, closing:string): React.JSX.Element => (
   <Document>
     <Page size="A4" style={styles.page}>
       <View style={styles.container}>
@@ -224,13 +226,7 @@ export const generatePDFDocument = ({hook, body, closing}: {hook: string, body: 
 
 
 
-export const writeCoverLetterPDF = ({
-  final,
-  contactInfo,
-}: {
-  final: string;
-  contactInfo: ExtractedContactInfo;
-}) => (
+export const writeCoverLetterPDF = (final: string, contactInfo: ContactInfo): React.JSX.Element => (
   <Document>
     <Page size="A4" style={styles.page}>
       <View style={styles.container}>

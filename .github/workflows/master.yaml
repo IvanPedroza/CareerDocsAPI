@@ -8,6 +8,7 @@ on:
 
 jobs:
   build:
+    needs: update-security-group/update-security-group
     runs-on: ubuntu-latest
     steps:
       - name: Set up Docker Buildx
@@ -24,7 +25,7 @@ jobs:
         with:
           file: ./docker/app.dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/career-docs-api:2.0.1
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/career-docs-api:latest
 
   deploy:
     name: Deploy to Server (AWS EC2)
