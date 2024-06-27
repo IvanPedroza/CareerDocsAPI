@@ -50,7 +50,7 @@ jobs:
         with:
           file: ./docker/app.dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/career-docs-api:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/career-docs-api:2
 
   deploy:
     name: Deploy to Server (AWS EC2)
